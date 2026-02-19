@@ -42,8 +42,8 @@ jobs:
       - name: Update Web App to latest image
         run: |
           az webapp config container set \
-            --name web-potentialp1-uks-prd \
-            --resource-group rg-potentialp1-uks-prd \
+            --name web-burnbox-poc \
+            --resource-group burnbox-poc \
             --docker-custom-image-name ${{ secrets.AZURE_CONTAINER_REGISTRY_LOGIN_SERVER }}/${{ secrets.AZURE_CONTAINER_REGISTRY_IMAGE_NAME }}:${{ github.sha }} \
             --docker-registry-server-url https://${{ secrets.AZURE_CONTAINER_REGISTRY_LOGIN_SERVER }} \
             --docker-registry-server-user ${{ secrets.AZURE_CONTAINER_REGISTRY_LOGIN_USERNAME }} \
@@ -52,6 +52,6 @@ jobs:
       - name: Set Web App port
         run: |
           az webapp config appsettings set \
-            --resource-group rg-potentialp1-uks-prd \
-            --name web-potentialp1-uks-prd \
+            --resource-group burnbox-poc \
+            --name web-burnbox-poc \
             --settings WEBSITE_PORT=3000
