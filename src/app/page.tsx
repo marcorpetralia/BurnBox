@@ -13,17 +13,46 @@ export default function Home() {
 
     const userMessage = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const newMessages = [...messages, { role: 'user' as const, content: userMessage }];
+    setMessages(newMessages);
     setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://20.90.145.35/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'qwen3:latest',
+          messages: newMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const assistantMessage = data.message?.content || 'No response received';
+      
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'This is a demo response. In the full version, your data is processed in a secure, isolated environment that can be destroyed at any time.' 
+        content: assistantMessage
       }]);
+    } catch (error) {
+      console.error('Error calling Ollama API:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, there was an error connecting to the AI service. Please try again.' 
+      }]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleBurn = () => {
