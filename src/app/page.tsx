@@ -6,6 +6,8 @@ export default function Home() {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isBurning, setIsBurning] = useState(false);
+  const [burnProgress, setBurnProgress] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,13 +104,53 @@ export default function Home() {
 
   const handleBurn = () => {
     if (confirm('Are you sure you want to burn this session? All messages will be permanently deleted.')) {
-      setMessages([]);
-      setInput('');
+      setIsBurning(true);
+      setBurnProgress(0);
+      
+      // Simulate environment destruction with progress bar
+      const duration = 2500; // 2.5 seconds
+      const steps = 50;
+      const increment = 100 / steps;
+      const interval = duration / steps;
+      
+      let currentStep = 0;
+      const progressInterval = setInterval(() => {
+        currentStep++;
+        setBurnProgress((currentStep / steps) * 100);
+        
+        if (currentStep >= steps) {
+          clearInterval(progressInterval);
+          // Clear messages and reset
+          setTimeout(() => {
+            setMessages([]);
+            setInput('');
+            setIsBurning(false);
+            setBurnProgress(0);
+          }, 300);
+        }
+      }, interval);
     }
   };
 
   return (
     <main className="main">
+      {isBurning && (
+        <div className="burn-overlay">
+          <div className="burn-modal">
+            <div className="burn-icon">🔥</div>
+            <h2 className="burn-title">Destroying Environment...</h2>
+            <p className="burn-description">All data is being securely erased</p>
+            <div className="progress-bar-container">
+              <div 
+                className="progress-bar-fill" 
+                style={{ width: `${burnProgress}%` }}
+              />
+            </div>
+            <p className="burn-percentage">{Math.round(burnProgress)}%</p>
+          </div>
+        </div>
+      )}
+      
       <div className="header">
         <h1 className="title">
           <span className="highlight">BurnBox.ai</span> - Demo
