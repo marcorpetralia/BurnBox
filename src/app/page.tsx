@@ -17,6 +17,9 @@ export default function Home() {
     setMessages(newMessages);
     setIsLoading(true);
 
+    // Add empty assistant message that will be populated by streaming
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
     try {
       const response = await fetch('http://20.90.145.35/api/chat', {
         method: 'POST',
@@ -29,7 +32,7 @@ export default function Home() {
             role: msg.role,
             content: msg.content
           })),
-          stream: false
+          stream: true
         })
       });
 
@@ -37,19 +40,61 @@ export default function Home() {
         throw new Error(`API request failed: ${response.status}`);
       }
 
-      const data = await response.json();
-      const assistantMessage = data.message?.content || 'No response received';
-      
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: assistantMessage
-      }]);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      if (!reader) {
+        throw new Error('Response body is null');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        
+        // Keep the last incomplete line in buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          
+          try {
+            const jsonChunk = JSON.parse(line);
+            const content = jsonChunk.message?.content || '';
+            
+            if (content) {
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage.role === 'assistant') {
+                  lastMessage.content += content;
+                }
+                return newMessages;
+              });
+            }
+
+            if (jsonChunk.done) {
+              break;
+            }
+          } catch (parseError) {
+            console.error('Error parsing JSON chunk:', parseError);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error calling Ollama API:', error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Sorry, there was an error connecting to the AI service. Please try again.' 
-      }]);
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage.role === 'assistant' && lastMessage.content === '') {
+          lastMessage.content = 'Sorry, there was an error connecting to the AI service. Please try again.';
+        }
+        return newMessages;
+      });
     } finally {
       setIsLoading(false);
     }
